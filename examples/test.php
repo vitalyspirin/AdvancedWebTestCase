@@ -1,10 +1,9 @@
-AdvancedWebTestCase
-===================
+<?php
 
-AdvancedWebTestCase class extending SimpleTest class WebTestCase and adding additional features
+require_once 'classes/AdvancedWebTestCase.php';
+require_once('simpletest/autorun.php');
 
-### Quick Start and Examples
-```php
+
 class ExampleTest extends AdvancedWebTestCase
 { 
 
@@ -30,4 +29,3 @@ class ExampleTest extends AdvancedWebTestCase
 	}
 
 }
-```

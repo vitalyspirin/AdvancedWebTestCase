@@ -2,6 +2,7 @@
 
 require_once(dirname(__FILE__) . '/../simpletest/web_tester.php');
 
+require_once ('MySimpleBrowser.php');
 require_once('GlobalCounters.php');
 
 
@@ -10,8 +11,10 @@ class AdvancedWebTestCase extends WebTestCase
 	public $createDate = '2013-12-05';
 	public $updateDate = '2014-04-09';
 
+	public $fullTitle;
+	public $shortTitle;
+	
 	protected $host;
-
 	protected $timer;
 
 	protected $previousNumberOfAllFetches;
@@ -40,9 +43,9 @@ class AdvancedWebTestCase extends WebTestCase
 		$elapsedTime = round(microtime(true) - $this->timer, 1);
 		$fileName = get_class($this) . ".php";
 		$title = "";
-		if ( isset($this->title) )
+		if ( isset($this->fullTitle) )
 		{
-			$title = "($this->title) ";
+			$title = "($this->fullTitle) ";
 		}
 
 		$numberOfAllFetches = GlobalCounters::$numberOfAllFetches - $this->previousNumberOfAllFetches;
@@ -122,13 +125,23 @@ class AdvancedWebTestCase extends WebTestCase
 
 			foreach($imageLinkList as $imageLink)
 			{
-				$imageLinkSimpleUrl = new SimpleUrl($imageLink);
-				$imageUrl = $imageLinkSimpleUrl->makeAbsolute($pageUrl)->asString();
+				$cssFileSimpleUrl = new SimpleUrl($cssFileLink);
+				if ($cssFileSimpleUrl->getHost() === false)
+				{
+					// $cssFileLink is relative link
+					$imageUrl = $this->makeAbsolute($imageLink, $pageUrl);
+				} else
+				{
+					$imageUrl = $this->makeAbsolute($imageLink, $cssFileLink);
+				}
+
 
 				if ( !in_array($imageUrl, $this->urlAlreadyCheckedList) )
 				{
-					$simpleBrowser->get($imageUrl);
-					$this->assertEqual($simpleBrowser->getResponseCode(), 200, "url=$imageLink. Found in CSS file:  $cssFileLink. Page: $pageUrl. %s");
+					$responseCodeForImageLink = $this->getResponseCodeForImageLink($imageUrl);
+
+					$this->assertEqual($responseCodeForImageLink, 200, "original url from CSS file: $imageLink. 
+						Converted into absolute url: $imageUrl. Found in CSS file:  $cssFileLink. Page: $pageUrl. %s");
 					$this->urlAlreadyCheckedList[] = $imageUrl;
 				}
 			}
@@ -158,8 +171,7 @@ class AdvancedWebTestCase extends WebTestCase
 		$simpleBrowser = new MySimpleBrowser();
 		foreach($imageLinkList as $imageLink)
 		{
-			$imageLinkSimpleUrl = new SimpleUrl($imageLink);
-			$imageUrl = $imageLinkSimpleUrl->makeAbsolute($pageUrl)->asString();
+			$imageUrl = $this->makeAbsolute($imageLink, $pageUrl);
 
 			if ( !in_array($imageUrl, $this->urlAlreadyCheckedList) )
 			{
@@ -168,6 +180,15 @@ class AdvancedWebTestCase extends WebTestCase
 				$this->urlAlreadyCheckedList[] = $imageUrl;
 			}
 		}
+	}
+
+
+	protected function getResponseCodeForImageLink($imageUrl) // avoiding parsing response as HTML text (since it's raw image data)
+	{
+		$mySimpleUserAgent = new MySimpleUserAgent();
+		$simpleHttpResponse = $mySimpleUserAgent->fetchResponse(new SimpleUrl($imageUrl), new SimpleGetEncoding());
+
+		return $simpleHttpResponse->getHeaders()->getResponseCode();
 	}
 
 
@@ -199,14 +220,7 @@ class AdvancedWebTestCase extends WebTestCase
 
 			if (substr($url, 0, 4) != "http")
 			{
-				if (substr($url, 0, 1) == '/')
-				{
-					$url = "$this->httpsSchemeForHost://$this->host$url";
-				} else
-				{
-					$simpleUrl = new SimpleUrl($url);
-					$url = $simpleUrl->makeAbsolute($pageUrl)->asString();
-				}
+				$url = $this->makeAbsolute($url, $pageUrl);
 			}
 
 			if ( !in_array($url, $this->urlAlreadyCheckedList) )
@@ -294,6 +308,7 @@ class AdvancedWebTestCase extends WebTestCase
 	{
 		$this->checkForBrokenImageLinks($content, $pageUrl);
 		$this->checkForBrokenALinks($content, $pageUrl, $comment);
+		$this->checkForBrokenLinksInCSSFiles($content, $pageUrl);
 		$this->checkValidation($content, $pageUrl);
 		$this->checkPHPNotices($content, $pageUrl, $comment);
 	}
