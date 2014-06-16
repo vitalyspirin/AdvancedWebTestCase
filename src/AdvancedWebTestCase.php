@@ -138,9 +138,8 @@ class AdvancedWebTestCase extends WebTestCase
 
 				if ( !in_array($imageUrl, $this->urlAlreadyCheckedList) )
 				{
-					$responseCodeForImageLink = $this->getResponseCodeForImageLink($imageUrl);
-
-					$this->assertEqual($responseCodeForImageLink, 200, "original url from CSS file: $imageLink. 
+					$simpleBrowser->get($imageUrl);
+					$this->assertEqual($simpleBrowser->getResponseCode(), 200, "original url from CSS file: $imageLink. 
 						Converted into absolute url: $imageUrl. Found in CSS file:  $cssFileLink. Page: $pageUrl. %s");
 					$this->urlAlreadyCheckedList[] = $imageUrl;
 				}
@@ -180,15 +179,6 @@ class AdvancedWebTestCase extends WebTestCase
 				$this->urlAlreadyCheckedList[] = $imageUrl;
 			}
 		}
-	}
-
-
-	protected function getResponseCodeForImageLink($imageUrl) // avoiding parsing response as HTML text (since it's raw image data)
-	{
-		$mySimpleUserAgent = new MySimpleUserAgent();
-		$simpleHttpResponse = $mySimpleUserAgent->fetchResponse(new SimpleUrl($imageUrl), new SimpleGetEncoding());
-
-		return $simpleHttpResponse->getHeaders()->getResponseCode();
 	}
 
 
